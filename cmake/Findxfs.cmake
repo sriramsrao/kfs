@@ -1,0 +1,38 @@
+# - Find XFS includes
+#
+#  XFS_INCLUDE_DIR - where to find XFS.h, etc.
+#  XFS_FOUND       - True if XFS found.
+
+
+IF (XFS_INCLUDE_DIR)
+  # Already in cache, be silent
+  SET(XFS_FIND_QUIETLY TRUE)
+ENDIF (XFS_INCLUDE_DIR)
+
+FIND_PATH(XFS_INCLUDE_DIR xfs/xfs.h
+  /opt/local/include
+  /usr/local/include
+  /usr/include
+)
+
+IF (XFS_INCLUDE_DIR)
+   SET(XFS_FOUND TRUE)
+ELSE (XFS_INCLUDE_DIR)
+   SET(XFS_FOUND FALSE)
+ENDIF (XFS_INCLUDE_DIR)
+
+IF (XFS_FOUND)
+   IF (NOT XFS_FIND_QUIETLY)
+      MESSAGE(STATUS "Found XFS:")
+   ENDIF (NOT XFS_FIND_QUIETLY)
+   ADD_DEFINITIONS(-DKFS_USE_XFS=1)
+ELSE (XFS_FOUND)
+   IF (XFS_FIND_REQUIRED)
+      MESSAGE(FATAL_ERROR "Could NOT find XFS")
+   ENDIF (XFS_FIND_REQUIRED)
+   MESSAGE(STATUS "Could NOT find XFS")
+ENDIF (XFS_FOUND)
+
+MARK_AS_ADVANCED(
+  XFS_INCLUDE_DIR
+  )

@@ -1,0 +1,3 @@
+# Where is the metaserver
+metaServer.name = somehost.com
+metaServer.port = 20000

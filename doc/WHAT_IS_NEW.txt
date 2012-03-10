@@ -1,0 +1,48 @@
+
+# $Id: WHAT_IS_NEW.txt 386 2010-05-27 16:01:24Z sriramsrao $
+#
+# Created on 2007/11/10
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+#
+# Sriram Rao
+# Kosmix Corp.
+
+INTRODUCTION
+============
+
+This document describes the changes from a previous release.
+
+Changes from version 0.1
+=========================
+ - Support for multiple directories for storing chunks at the chunkserver.
+ - Support for periodic remote backup of metaserver checkpoint files
+ - Use log4cpp to write out metaserver/chunkserver log files.  log4cpp
+ provides log file rotation support.
+ - Bug fixes
+
+Changes from version 0.1.1
+==========================
+ - Bug fixes
+
+Changes from version 0.1.2
+=========================
+ - Support for compiling on 32-bit Linux platforms
+ - Support for compiling with gcc 4.3
+ - Bug fixes
+

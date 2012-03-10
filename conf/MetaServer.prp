@@ -1,0 +1,6 @@
+# Port at which clients can connect to us
+metaServer.clientPort = 20000
+# Port at which chunkservers can connect to us
+metaServer.chunkServerPort = 30000
+metaServer.logDir = ./kfslog
+metaServer.cpDir = ./kfscp

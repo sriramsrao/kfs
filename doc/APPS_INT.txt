@@ -1,0 +1,76 @@
+
+# $Id: APPS_INT.txt 386 2010-05-27 16:01:24Z sriramsrao $
+#
+# Created on 2007/08/23
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# Sriram Rao
+# Kosmix Corp.
+
+TABLE OF CONTENTS
+=================
+ * INTRODUCTION
+ * CLIENT-SIDE API
+ * LINKING 
+ * HOW DOES IT WORK?
+
+INTRODUCTION
+============
+
+This document describes how to integrate the KFS client library with your applications.
+
+CLIENT-SIDE API
+===============
+
+To use KFS with your applications, the application will need to be
+modified.  Two sample programs are included in the package.  
+ - ~/code/kfs/examples/KfsTest_main.cc
+ - ~/code/kfs/examples/KfsTest.java
+
+Each program shows how to use the client-side API.  The KFS client
+library API is defined in:
+ - C++: ~/code/kfs/src/cc/libkfsClient/KfsClient.h
+ - Java: ~/code/kfs/src/java/org/kosmix/kosmosfs/access/KfsAccess.java
+
+NOTE: For Java applications, we use the JNI interface to get at the
+C++ KFS client library code from Java applications.
+
+LINKING
+========
+
+After KFS client library are integrated with your applications, you
+will need to perform the following steps to link the application:
+ - C++: link with ~/code/kfs/build/lib-static/libkfsClient.a
+ - Java: Add ~/code/kfs/build/kfs-0.1.jar to your CLASSPATH; also
+ ~/code/kfs/build/lib/ should be in your LD_LIBRARY_PATH
+
+  NOTE: ~/code/kfs/build/lib will, by default, contain libraries built
+  with "Debug" option.  This library code in this mode is "very
+  chatty".  Hence, it is recommended that you use the libraries built
+  with "Release" option with your applications (such as, ~/code/kfs/build/release/...).
+
+HOW DOES IT WORK
+================
+
+In either case,the mode of execution is as follows:
+ - the application interacts with the KFS client library
+ - the KFS client library interfaces with the
+ metaserver/chunkserver(s)
+ - If data is replicated, whenever there is a failure in a
+ chunkserver, the client library will fail-over to another chunkserver
+ that has the data; this fail-over is transparent to the application.

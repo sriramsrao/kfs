@@ -1,0 +1,11 @@
+# KFS Machine configuration file
+[metaserver]
+node: localhost
+rundir: /export/home/sriram/kfs/meta 
+baseport: 20000
+[chunkserver1]
+node: localhost
+rundir: /export/home/sriram/kfs/chunk1 
+chunkDir: /export/home/sriram/kfs/chunk1/bin/kfschunk1 /export/home/sriram/kfs/chunk1/bin/kfschunk2 
+baseport: 30000 
+space: 200 G

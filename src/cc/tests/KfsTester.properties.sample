@@ -1,0 +1,4 @@
+# Configuration for kfs client tester: 
+metaServer.name = sriram.corp.kosmix.com
+metaServer.port = 10001
+

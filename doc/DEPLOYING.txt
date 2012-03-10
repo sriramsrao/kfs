@@ -1,0 +1,299 @@
+
+# $Id: DEPLOYING.txt 389 2010-05-27 16:20:57Z sriramsrao $
+#
+# Created on 2007/08/23
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+#
+# Sriram Rao
+# Kosmix Corp.
+
+CONTENTS:
+=========
+ * DEPLOYING KFS
+ * DEFINING THE MACHINE CONFIGURATION
+ * INSTALLING KFS BINARIES
+ * RUNNING KFS
+ * MONITORING KFS SERVERS
+ * INCREMENTAL SCALING: ADDING NEW SERVERS
+ * WHERE DOES THE SERVER STORE THINGS
+ * UPGRADE
+
+DEPLOYING KFS
+=============
+
+To deploy KFS, we assume that you can login into the target machines
+via ssh without a password.
+
+There are two modes of deployment:
+ - Single machine setting: The metaserver/chunkserver run on the same,
+ single machine
+ - Distributed setting: The servers run on a cluster of machines.
+
+In either mode, the steps are the same.  For ease of explanation, we
+assume that the machine from which the software was installed is the
+same the as one from which the servers will be started/stopped.
+
+DEFINING THE MACHINE CONFIGURATION
+==================================
+
+The format of this file follows a Python config file: [...] defines a
+section---in our case, a server <key>: <value> is used to
+configuration for the server The file is expected to have exactly 1
+[metaserver] section; there can be as many chunkserver sections as
+there are chunk servers.  For simplicity, chunkserver sections are
+defined as [chunkserver1]...[chunkserverN]
+
+For either type of server, the configuration file defines three
+variables:
+ * node:  This variable specifies the node on which the server should
+ be installed and run.
+
+ * rundir: This variable specifies the directory on the node where the
+ binaries should be installed (see next section).  When multiple
+ servers are run on the same node, this variable should contain unique
+ values for each server.
+
+ * baseport: On a node, this variable uniquely defines the port at
+ which the server is listening for incoming connections.  In KFS,
+ inter-process communication---between meta
+ server/chunkserver(s)/applications---is via TCP sockets.  Now,
+    - When multiple servers are run on the same node, this variable
+      should be assigned a unique value for each server. 
+    - When servers are run on different nodes, by definition, the
+      values are unique.  Consequently, all servers can be configured
+      to listen on the same port # on the node.
+
+For the metaserver, an additional variable is defined:
+ * backup_path: This can be used to specify the (remote) location to
+ which the metaserver checkpoint files should be backed up to.
+ Periodically, via rsync, the metaserver checkpoint files are backed
+ to the remote location.  For this backup to work, the "backup_path"
+ should exist and for remote locations, you should be able to ssh
+ without password---from the machine on which the metaserver
+ is running to the remote node to which the checkpoint files have to
+ be backed up to.
+ * clusterkey: This string defines the "key" for the cluster.  Whenever
+ a chunkserver joins, it passes its value of the key to the metaserver.  
+ Only if the keys match is the chunkserver allowed to join the cluster.
+ This is used to prevent config mismatches.
+
+For the chunkservers, there is are two additional variables that are defined:
+  * space:  This variable specifies the amount of storage
+  space exported by that chunkserver.  The units for space are:
+     * 'G' for GigaBytes
+     * 'M' for MegaBytes
+     * 'B' for Bytes
+  For example, 
+       space: 30 G 
+  defines that the space exported by the chunkserver is 30 GB.
+ 
+  * chunkdir: This variable is optional.  It can be used to provide a
+  list of directories that the chunkserver should use to store the
+  chunks.  The directory list consists of a set of paths that are
+  separated by a space character.
+
+By default, 
+ - meta server's checkpoint/log files are stored in
+ ${rundir}/bin/kfscp and ${rundir}/bin/kfslog
+ - chunkserver's checkpoint/log files are stored in
+ ${rundir}/bin/logs
+ - chunkserver's chunks are stored in ${rundir}/bin/kfschunk.  This
+ value is overridden when "chunkdir" variable is defined for a chunkserver.
+
+NOTE: It is not advisable to change the default location for either
+server's checkpoint/log files.  Changing them adversely affects the
+other helper scripts that are provided (such as, backing up the meta
+server's logs/checkpoint files, periodically cleaning out old
+checkpoint/log files).
+
+INSTALLING KFS BINARIES
+=======================
+To simplify the software deployment, scripts are included in the
+distribution.  Assuming ~/code/kfs is the root of the tree,
+~/code/kfs/scripts contains the necessary scripts and sample machine
+configuration files.
+
+To install the KFS binaries, perform the following steps:
+
+1. Build the software (see COMPILING.txt)
+2. cd ~/code/kfs/scripts
+3. Create config file that describes the machine setup.  These are the
+machines on which KFS servers will be deployed. For sample config files, see:
+       - ~/code/kfs/conf/machines_local.cfg.sample: for setting up KFS on a single machine
+       - ~/code/kfs/conf/machines_distributed.cfg.sample: for setting up KFS on a cluster of
+          machines
+4. Run setup script to get the binaries copied over and the necessary
+directories made.  The setup script requires two arguments:
+   i) machines config file: ~/code/kfs/scripts/machines.cfg
+   ii) path to the bin directory containing the metaserver/chunkserver
+   binaries, namely, ~/code/kfs/build/bin, type the following:
+
+ python kfssetup.py -f machines.cfg -b ../build -w ../webui
+
+The setup script does the following steps:
+ - It creates a kfspkg.tgz comprising of the appropriate binary
+ (metaserver/chunkserver), scripts, and uses scp/ssh to copy and
+ install the package on each of the nodes
+ - On the target node, the setup script copies the kfspkg.tgz to /tmp
+ directory.  
+ - The model used by the script works for statically linked
+ metaserver/chunkserver binaries.  If these binaries were built with
+ dynamic linkage, simply copying the binaries to remote machines may
+ not work.  You will need to deploy libraries, setup the
+ LD_LIBRARY_PATH and such to make it work.  This is NOT supported by
+ the current script.
+
+RUNNING KFS
+===========
+
+After you have deployed the KFS software on all the target machines,
+helper scripts are included in the distribution to start/stop the
+servers.
+
+ Starting the servers:
+ =====================
+ 1. cd ~/code/kfs/scripts 
+ 2. python kfslaunch.py -f machines.cfg --start
+
+ This script reads the machines.cfg file and starts up the appropriate
+ server on a given target machine.  
+  - For the metaserver, the metaserver binary as well as script to
+ periodically clean out old checkpoint/log files. 
+  - For the chunkserver, the chunkserver binary as well as script to
+ periodically clean out old checkpoint/log files. 
+
+ For both metaserver/chunkserver, whenever a new checkpoint is taken
+ (which also causes a log rotation to occur), the old checkpoint/logs
+ are not deleted.  To prevent accumulation of these old files,
+ periodic cleanup is done by the script.
+
+ If the server was previously running on the target machine, then
+ there is no effect on the target machine due to this script.
+
+ Stopping the servers:
+ ======================
+ 1. cd ~/code/kfs/scripts 
+ 2. python kfslaunch.py -f machines.cfg --stop
+
+ This script reads the machines.cfg file and stops the appropriate
+ server on a given target machine.
+
+ Manipulating the KFS directory tree
+ ===================================
+
+ To manipulate the KFS directory tree interactively, a KfsShell binary
+ is included in the tools.  This shell allows users to execute
+ filesystem utility commands such as, cd, ls, mkdir, rmdir, etc.  To
+ launch this binary:
+
+ 1. cd ~/code/kfs/scripts 
+ 2. python kfsshell.py -f machines.cfg -b ~/code/kfs/build/release/bin
+
+ The shell comes with interactive help.
+
+MONITORING KFS SERVERS
+======================
+
+To monitor KFS servers, you can use use ~/code/kfs/build/bin/KfsPing
+tool.  This tool can be used to:
+   - ping the metaserver to determine how many chunkservers are
+     connected to it
+   - ping the chunkserver to determine which chunkserver it is
+     connected to 
+
+Type KfsPing -h to know its usage.
+
+After kfslaunch.py is used to start the servers, KfsPing can be used
+to verify that (1) the servers have been started on the appropriate
+machines, and (2) the chunkservers are connected to the metaserver.
+
+INCREMENTAL SCALING: ADDING NEW SERVERS
+=======================================
+
+To add new chunkservers to the setup, perform the following steps:
+
+1. Add the new chunkservers to the machines.cfg file (i.e,
+   ~/code/kfs/scripts/machines.cfg)
+2. Install the KFS binaries on the new machines (see the section about
+   INSTALLING KFS BINARIES).  The install script will only install
+   binaries if they don't exist on the target machine.
+3. Start the chunkservers on the new nodes.  See "Starting the
+   servers" in the RUNNING KFS section.  The launch script will only
+   start (1) the new chunkservers, and (2) any old chunkservers that
+   may have been stopped.  When the new chunkservers startup, they
+   announce themselves to the metaserver and get included in the system.
+4. The metaserver does periodic rebalancing of data.  If it detects
+   that some chunkservers are over-utilized (i.e., > 80% of their
+   exported space is used) and others are under-utilized (i.e., < 20%
+   of their exported space is used), data is migrated from the
+   over-utilized to under-utilized nodes.
+
+
+WHERE DOES THE SERVER STORE THINGS
+==================================
+
+When the KFS servers are run (metaserver/chunkserver), the following
+directories are created: 
+ - metaserver: kfscp, kfslog.  These directories store, respectively,
+ the checkpoints and the log files produced by the metaserver.
+ - chunkserver: kfschunk, kfslog.  These directories store,
+ respectively, the chunk files and logs/checkpoints produced by the
+ chunkserver. 
+
+For either server, though checkpoint/logs are rolled once every
+minute, the older log/checkpoint files are not immediately deleted.
+There is a cleaner process that runs once an hour which deletes the
+old files.
+
+Finally, the chunkserver also has a directory "kfschunk/lost+found"
+where it keeps stale/corrupted chunks:
+
+ - stale chunks: These are chunks for which there is a chunk version #
+   mismatch: the version # of the chunk on the chunkserver is less
+   than what the metaserver knows is the latest version # of that
+   chunk.
+ 
+ - corrupted chunk: These are chunks for which there is a checksum
+   mismatch.  That is, KFS chunkservers compute checksums for a data
+   block on 64KB boundaries; the checksums are computed at the time of
+   writing data to tbe chunk and the checksums are stored in the
+   logs/checkpoint files.  On each read, the checksums are validated.
+   During this validation process, if there is a mismatch, then the
+   chunk is said to be corrupt.  The corrupt chunks are moved to the
+   lost+found directory.  The metaserver is notified of the corrupted
+   chunk.  If the chunk is replicated, the metaserver will trigger
+   re-replication to recover the lost chunk.
+
+UPGRADE
+=======
+
+To upgrade from KFS-v-0.1 to KFS-v-0.1.1, run the setup script with
+the upgrade option enabled.  For instance, assuming you had installed
+the KFS binaries based on the steps outlined in "INSTALLING KFS
+BINARIES" section, type the following:
+
+1. cd ~/code/kfs/scripts
+2. python kfssetup.py -f machines.cfg -b ../build/bin -u
+
+The upgrade script does the following steps:
+
+1. It stops existing chunkserver/metaserver processes on the
+   appropriate nodes.
+2. It pushes new binaries to each node as well upgrades the scripts on
+   each node.  This is similar to what was done for install.

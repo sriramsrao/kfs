@@ -1,0 +1,86 @@
+
+# $Id: USING.txt 386 2010-05-27 16:01:24Z sriramsrao $
+#
+# Created on 2007/08/23
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+#
+# Sriram Rao
+# Kosmix Corp.
+
+TABLE OF CONTENTS
+=================
+ * INTRODUCTION
+ * TOOLS SOURCE/BINARIES
+ * LOADING/UNLOADING DATA
+ * FILE SYSTEM TOOLS
+ * SCRIPTING SUPPORT
+
+INTRODUCTION
+============
+
+This document describes how to use KFS.  In particular, how to
+load/unload data from KFS servers; the set of tools that are available
+to view the filesystem tree.
+
+TOOLS SOURCE/BINARIES
+=====================
+
+The source code for all the tools included in the package is at:
+~/code/kfs/src/cc/tools
+
+When the package is compiled and installed, the tools are installed
+in: ~/code/kfs/build/bin/tools
+
+LOADING/UNLOADING DATA
+======================
+
+To load pre-existing data files into KFS, the data needs to be copied
+in to a KFS deployment.   
+ - cpFs2Kfs is a tool that copies a directory hierarchy from a local
+ filesystem to a KFS; this tool creates a corresponding directory
+ hierarchy in KFS
+
+When loading data into KFS, you can run multiple instances of cpFs2Kfs
+to speed up the copy; each instance copies in a portion of the
+directory tree.
+
+For debugging purposes, data can also copied out from KFS to a local
+filesystem:
+ - cpKfs2Fs is a tool that copies a directory hierarchy from KFS
+ to a local filesystem; this tool creates a corresponding directory
+ hierarchy in the local filesystem
+
+These tools take arguments from the command line.  
+Type: <tool name> -h to see the list of options for that tool.
+
+FILE SYSTEM TOOLS
+=================
+
+To manipulate the KFS directory tree, KfsShell tool is provided.
+This tool provides a basic set of filesystem commands such as
+ - mkdir, rmdir, rm, cd, cp, mv, ls
+
+SCRIPTING SUPPORT
+=================
+
+To manipulate the KFS directory tree from a script, commands can be
+"piped" to the KfsShell tool.  For instance, to create a directory:
+  mkdir foo | KfsShell -q -m <metaserver host> -p <metaserver port>
+
+

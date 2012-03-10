@@ -1,0 +1,205 @@
+
+# $Id: COMPILING.txt 386 2010-05-27 16:01:24Z sriramsrao $
+#
+# Created on 2007/08/23
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# 
+# Sriram Rao
+# Kosmix Corp.
+
+TABLE OF CONTENTS
+=================
+ * COMPILING THE SOURCE
+ * BUILDING C++ SIDE
+ * BUILDING DEBUG/RELEASE BINARIES
+ * BUILDING JAVA SIDE
+ * BUILDING FUSE
+ * BUILDING PYTHON EXTENSION MODULE
+
+COMPILING THE SOURCE
+====================
+
+KFS has been tested on Linux machines running FC5 on 64-bit architectures.  
+To compile and run KFS, you need to have the following software
+packages installed on your machine:
+ - Boost (preferably, version 1.34 or higher)
+ - cmake (preferably, version 2.4.7 or higher)
+ - log4cpp (preferably, version 1.0)
+ - gcc version 4.3 or higher)
+ - xfs-progs devel RPM on Linux
+
+This document assumes that you have downloaded the source to
+directory: ~/code/kfs.  We assume that you want to build the source in
+~/code/kfs/build.   If you want to change the top-level directory from
+~/code to something else, please keep the same hierarchy starting from kfs.
+
+~/code/kfs should contain the following directories:
+  src
+  scripts
+  doc
+
+There are two parts to compiling the source:
+ - Build the C++ side to get the metaserver/chunkserver binaries, tools, and
+ the C++ client library.
+ - Build the Java side to get a kfs-0.1.jar file which contains the
+ wrapper calls to native C++ via JNI; this allows Java apps to access
+ files stored in KFS.
+
+BUILDING C++ SIDE:
+==================
+
+In ~/code/kfs/CMakeLists.txt, few variables are defined:
+ - Build type: The system is built with debug flags enabled; to build
+ release binaries, change the default value for CMAKE_BUILD_TYPE 
+ from Debug to Release.
+
+To build KFS, perform the following steps:
+
+1. cd ~/code/kfs
+2. mkdir build
+3. cd build
+4. Generate the Makefiles: cmake ~/code/kfs/
+       -- will build DEBUG binaries by default
+5. Compile the source: gmake
+6. After the source, install the binaries: gmake install
+
+At the end of the last step, you will have the following hierarchy:
+
+ *  ~/code/kfs/build/bin -- This will contain the binaries
+     *  ~/code/kfs/build/bin/tools -- This will contain the various KFS
+      utilities that are equivalent to the *nix commands such as, cp, mv, mkdir, rmdir etc.
+     *  ~/code/kfs/build/bin/tests -- This contains simple unit-test programs 
+      to make/remove directories, read/write files, etc.
+
+ * ~/code/kfs/build/lib/ --- This will contain the libraries with the
+    .so extension.
+
+ * ~/code/kfs/build/lib-static --- This will contain the libraries with
+    .a extension
+
+BUILDING DEBUG AND RELEASE BINARIES
+===================================
+
+It is advisable to build both debug/release binaries.  For the
+purposes of deployment,
+ - use DEBUG binaries for metaserver/chunkserver
+ - use RELEASE binaries for the tools.  This makes the tools less chatty
+ - for performance reasons, you may want to use release binaries with debugging
+   info enabled (such as, compile flags of "-O2 -g")
+
+Having binaries with debugging info simplifies debugging core-dumps :)
+
+To build DEBUG/RELEASE binaries, here is a suggested directory
+hierarchy:
+ ~/code/kfs/build --- is the build root
+                 /debug -- is the debug build area
+                 /release -- is the release build area
+                 /reldbg -- is the release binares with debugging info build area
+
+Next,
+ - cd ~/code/kfs/build/debug
+ - Run the steps from the previous section; binaries with debugging
+   info. are built by default.
+ 
+ - cd ~/code/kfs/build/release
+ - cmake -DCMAKE_BUILD_TYPE:STRING="Release" ~/code/kfs
+ - Follow the steps from #5 from the previous section to compile the
+ tree
+
+ - cd ~/code/kfs/build/reldbg
+ - cmake -DCMAKE_BUILD_TYPE:STRING="RelWithDebInfo" ~/code/kfs
+ - Follow the steps from #5 from the previous section to compile the
+ tree
+
+
+BUILDING JAVA SIDE:
+===================
+
+To build Java support setup:
+
+1. cd ~/code/kfs
+2. ant jar
+
+At the end of the last step, you will have the following files:
+ * ~/code/kfs/build/classes --- This will contain the Java class files
+ * ~/code/kfs/build/kfs.jar --- The jar file containing the Java
+ classes
+
+BUILDING FUSE Support
+=====================
+
+For building FUSE support for KFS, you will need install fuse package
+on the target machines.  To compile KFS/FUSE bindings, 
+ - In ~/code/kfs/CMakeLists.txt, provide the path to libfuse.so
+ - Specifically, uncomment the following line in the CMakeLists.txt
+     # set (Fuse_LIBRARY_DIR <provide path>)
+   and provide a path to the fuse library.
+
+Then follow the normal compilation steps (cmake/gmake/gmake install) and
+kfs_fuse binary will be built and installed in ~/code/kfs/build/bin
+
+Due to licensing issues, you can include FUSE only if it is licensed
+under LGPL or any other license that is compatible with Apache 2.0 license.
+
+BUILDING PYTHON EXTENSION MODULE
+================================
+
+1. Build and install the KFS client library.  Let the path to the shared libraries be:
+~/code/kfs/build/lib
+
+2. cd to ~/code/kfs/src/cc/access and build the python extension
+   module:
+   - Edit kfs_setup.py and setup the include path.  Specifically,
+          kfsext = Extension('kfs',
+   		include_dirs = ['/home/sriram/code/kosmosfs/src/cc/'],
+                                 ^^^^^^^^^^^^
+       change the path appropriately.
+    - python kfs_setup.py ~/code/kosmosfs/build/lib/ build
+      This will build kfs.so in ./build/lib.../kfs.so
+
+3. The kfs.so library needs to be installed in the site-packages for python.
+   a. The default installation is done via:
+    - python kfs_setup.py ~/code/kosmosfs/build/lib/ install
+
+       For instance, if /usr/lib64/python/site-packages is where the
+       site packages, then you will need to install kfs.so there.  You
+       will need write permissions to install the file there.  
+
+    b. Install in alternate locations:
+
+       python kfs_setup.py ~/code/kosmosfs/build/lib install
+     --home=~/code/kosmosfs/build/lib
+
+      This command will install the python package in
+      ~/code/kosmosfs/build/lib. 
+
+       To allow python run-time environment to find this package, you
+       will need to add the package path to PYTHONPATH.  That is, in
+       the install "home" directory, find the path leading to kfs.so;
+       for example, ~/code/kosmosfs/build/lib/lib64/python/kfs.so
+       Then, update PYTHONPATH as:
+       
+        export PYTHONPATH = ${PYTHONPATH}:~/code/kosmosfs/build/lib/lib64/python
+
+4. To allow applications to use kfs.so, ~/code/kfs/build/lib should be
+   in the LD_LIBRARY_PATH.
+
+5. For sample applications, see:
+   ~/code/kfs/src/python/flogger/flogger.py or 
+   ~/code/kfs/src/python/rw/rw.py

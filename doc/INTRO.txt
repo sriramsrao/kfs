@@ -1,0 +1,180 @@
+
+# $Id: INTRO.txt 386 2010-05-27 16:01:24Z sriramsrao $
+#
+# Created on 2007/08/23
+#
+# Copyright 2007 Kosmix Corp.
+#
+# This file is part of Kosmos File System (KFS).
+#
+# Licensed under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# Sriram Rao
+# Kosmix Corp.
+
+TABLE OF CONTENTS
+=================
+* INTRODUCTION
+* FEATURES IMPLEMENTED
+* KEY KNOWN ISSUES
+* REFERENCES
+
+INTRODUCTION
+============
+
+Applications that process large volumes of data (such as, search
+engines, grid computing applications, data mining applications, etc.)
+require a backend infrastructure for storing data.  Such
+infrastructure is required to support applications with sequential
+access pattern over large files (where each file is on the order of a
+tens of GB).
+
+At Kosmix, we have developed the Kosmos File System (KFS), a high
+performance distributed file system to meet this infrastructure need.
+We are releasing KFS to public domain with the hope that it will serve
+as a platform for experimental as well as commercial projects.
+
+The system consists of 3 components:
+ - metaserver: a single meta-data server that provides a global namespace
+ - chunkserver: blocks of a file are broken up into chunks and stored
+ on individual chunk servers.  Chunkserver store the chunks as files
+ in the underlying file system (such as, XFS on Linux)
+ - client library: that provides the file system API to allow
+ applications to interface with KFS.  To integrate applications to use
+ KFS, applications will need to be modified and relinked with the KFS
+ client library.
+
+KFS is implemented in C++.  It is implemented using standard system
+components such as, TCP sockets, aio (for disk I/O), STL, and boost
+libraries.  It has been tested on 64-bit x86 architectures running
+Linux FC5.
+
+FEATURES IMPLEMENTED
+=====================
+
+ - Incremental scalability: Chunkservers can be added to the system in
+   an incremental fashion.  When a chunkserver is added, it
+   establishes connection to the metaserver and becomes part of the
+   system.  No metaserver restarts are needed.
+
+ - Balancing: During data placement, the meta-server tries to keep to
+   the data balanced across all nodes in the system.
+
+ - Re-balancing: Periodically, the meta-server may rebalance data
+   amongst the nodes in the system.  In the current implementation,
+   such rebalancing is done when the server detects that some nodes
+   are under-utilized (i.e., < 20% of the chunkserver's exported space
+   is used) and other nodes are over-utilized (i.e., > 80% of a
+   chunkserver's exported space is used).
+
+ - Availability: Replication is used to provide availability due to
+   chunk server failures.  Typically, files are replicated 3-way.
+
+ - Per file degree of replication: The degree of replication is
+   configurable on a per file basis.
+
+ - Re-replication: Whenever the degree of replication for a file drops
+   below the configured amount (such as, due to an extended
+   chunkserver outage), the metaserver forces the block to be
+   re-replicated on the remaining chunk servers.  Re-replication is
+   done in the background without overwhelming the system.
+
+ - Data integrity: To handle disk corruptions to data blocks, data
+   blocks are checksummed.  Whenever a chunk is read, checksum
+   verification is performed; whenever there is a checksum mismatch,
+   re-replication is used to recover the corrupted chunk.
+
+ - Client side meta-data caching: The KFS client library caches
+   directory related meta-data.  This to avoid repeated server lookups
+   for pathname translation.  The meta-data entries have a cache
+   validity time of 30 secs.
+
+ - File writes: The KFS client library employs a write-back cache.
+   Also, whenever the cache is full, the client will flush the data to
+   the chunkservers.  Applications can choose to flush data to the
+   chunkservers via a flush() call.  Once data is flushed to the
+   server, it is available for reading.
+
+ - Leases: KFS client library uses caching to improve performance.
+   Leases are used to support cache consistency.
+
+ - Versioning: Chunks are versioned.  This enables detection of
+   "stale" chunks: Let chunkservers, s1, s2, s3, store version v of
+   chunk c; suppose that s1 fails; when s1 is down a client writes to
+   c; the write will succeed at s2, s3 and the version # will change
+   to v'.  When s1 is restarted, it notifies the metaserver of all the
+   versions of all chunks it has; when metaserver sees that s1 has
+   version v of chunk c, but the latest is v', metaserver will notify
+   s1 that its copy of c is stale; s1 will delete c.
+
+ - Client side fail-over: The client library is resilient to
+   chunksever failures.  During reads, if the client library
+   determines that the chunkserver it is communicating with is
+   unreachable, the client library will fail-over to another
+   chunkserver and continue the read.  This fail-over is transparent
+   to the application.
+
+ - Language support: KFS client library can be accessed from C++,
+   Jave, and Python.
+
+ - Tools: A filesystem shell is included in the tools.  This shell,
+   KfsShell, allows users to manipulate a KFS directory tree using
+   commands such as, ls, cp, mkdir, rmdir, rm, etc.  Additional tools
+   for loading/unloading data to KFS as well as tools to monitor the
+   chunk/meta-servers are provided.
+
+ - Launch scripts: To simplify launching KFS servers, a set of scripts
+   to (1) install KFS binaries on a set of nodes, (2) start/stop KFS
+   servers on a set of nodes are also provided.
+
+ - FUSE support on Linux: By mounting KFS via FUSE, this support
+   allows existing linux utilities (such as, ls) to interface with KFS.
+
+
+KEY KNOWN ISSUES
+================
+
+ - There is a single meta-data server in the system.  This is a single
+   point of failure.  The meta-data server logs/checkpoint files are
+   stored on local disk.  To avoid losing the filesystem, the
+   meta-data server logs/checkpoint files should be backed up to a
+   remote node periodically.
+
+ - Data placement:  Since the meta-data server does placement in a
+   balanced manner, little control is provided.  It maybe desirable to
+   provide placement hints to the meta-data server.  That is, the data
+   placment algorithm is not network-aware.
+
+ - Changing a file's replication factor: The max. value for a file's
+   degree of replication is at most 64 (assuming resources exist).
+
+ - Dynamic load balancing: The metaserver currently does not replicate
+   chunks whenever files become "hot".  The system however, performs a
+   limited form of load balancing whenever it determines that disks on
+   some nodes are under-utilized and other nodes are over-utilized.
+
+ - Persistent meta-server/chunk-server connections: In the current
+   implementation, there is a persistent connection between a
+   metaserver and a chunkserver.  This may limit metaserver
+   scalability; this will be addressed in a subsequent release.
+
+ - Snapshots: The system does not have a facility for taking snapshots.
+
+ - Security/permissions: There is no security/file permissions
+   supported currently.
+
+REFERENCES
+==========
+
+KFS builds upon some of the ideas outlined in the Google File System (GFS)
+paper.  See research.google.com/pubs/papers.html

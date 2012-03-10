@@ -1,0 +1,21 @@
+# KFS Machine configuration file
+#
+# The following configuration is a single node KFS setup.  There is
+# one meta server and 2 chunk servers. The chunk servers are exporting 
+# 30,000,000 bytes or 30 G apiece.  Note the unique values for the baseport, rundir.
+#
+[metaserver]
+node: localhost
+rundir: /Users/kosmix/kfsRun/meta
+baseport: 20000
+clusterkey: test-cluster
+[chunkserver1]
+node: localhost
+rundir: /Users/kosmix/kfsRun/chunk1
+baseport: 30000 
+space: 30 G
+[chunkserver1]
+node: localhost
+rundir: /Users/kosmix/kfsRun/chunk2
+baseport: 40000 
+space: 30000 M

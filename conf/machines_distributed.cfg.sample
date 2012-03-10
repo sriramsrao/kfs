@@ -1,0 +1,29 @@
+# KFS Machine configuration file
+#
+# The following configuration is for a multi-node KFS setup.  There is
+# one meta server and 3 chunk servers. The chunk servers are exporting 
+# 30,000,000 bytes or 30G apiece.  Note that, though the baseport
+# for the chunkservers is the same on all nodes, because the nodes are
+# different, the values are unique on each node; similary for the
+# rundir of the chunk servers.
+#
+[metaserver]
+node: hostA
+rundir: /Users/kosmix/kfsRun/meta
+baseport: 20000
+clusterkey: test-cluster
+[chunkserver1]
+node: host1
+rundir: /Users/kosmix/kfsRun/chunk
+baseport: 30000 
+space: 30 G
+[chunkserver2]
+node: host2
+rundir: /Users/kosmix/kfsRun/chunk
+baseport: 30000 
+space: 30 G
+[chunkserver3]
+node: host3
+rundir: /Users/kosmix/kfsRun/chunk
+baseport: 30000 
+space: 30000 M

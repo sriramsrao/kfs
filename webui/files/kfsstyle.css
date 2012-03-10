@@ -1,0 +1,108 @@
+<style type="text/css">
+<!--
+body {
+	font: 100% Verdana, Arial, Helvetica, sans-serif;
+	background:#E8E8E8;
+	margin: 0; 
+	padding: 0;
+	text-align: center; /* this centers the container in IE 5* browsers. The text is then set to the left aligned default in the #container selector */
+	color: #000000;
+}
+.oneColLiqCtr #container {
+	background:#F2F2F2;
+	margin: 0 auto; /* the auto margins (in conjunction with a width) center the page */
+	/* border: 1px solid #000000; */
+	border-top:dotted 1px;
+	border-bottom:hidden 1px;
+	text-align: left; /* this overrides the text-align: center on the body element. */
+}
+.oneColLiqCtr #mainContent {
+	padding: 0 20px; /* remember that padding is the space inside the div box and margin is the space outside the div box */
+	padding-bottom: 0 20px;
+	padding-top: 0 5px;
+}
+-->
+
+.network-status-table {
+	font-family:Verdana, Arial, Helvetica, sans-serif;
+	border-collapse:collapse;
+	width: auto;
+	font-size:9px;
+        float: left;
+        margin-right:15px;
+}
+
+.status-table {
+	font-family:Verdana, Arial, Helvetica, sans-serif;
+	border-collapse:collapse;
+	width: auto;
+	font-size:10px;
+        float: left;
+        margin-right:15px;
+}
+
+.status-table th, .status-table td, .network-status-table th, .network-status-table td
+{
+padding: 0.1em 1em;
+}
+
+.status-table th, .network-status-table th {
+text-align:left
+}
+
+.network-status-table tbody tr td {
+background-color:#FFFFFF
+}
+
+.status-table tbody tr.even td, .network-status-table tbody tr.even td {
+background-color:#FFFFFF
+}
+
+.status-table tbody tr.odd td, .network-status-table tbody tr.odd td {
+background-color:#CFCFCF
+}
+
+.status-table tbody tr.dead td, .network-status-table tbody tr.dead td {
+background-color:#FF3300
+}
+
+.status-table tbody tr.retiring td, .network-status-table tbody tr.retiring td {
+background-color:#FF9966
+}
+
+.status-table tbody tr.overloaded td, .network-status-table tbody tr.overloaded td {
+background-color:#6666CC
+}
+
+.status-table tbody tr.notstarted td, .network-status-table tbody tr.notstarted td {
+background-color:#FFFF66
+}
+
+.status-table caption {
+font-size:10px;
+font-style:bold;
+}
+
+div.floatleft {
+float:left
+}
+
+.status-table tbody tr td {
+background-color:#FFFFFF
+}
+
+.info-table table {
+	font-family:Verdana, Arial, Helvetica, sans-serif;
+	font-size:17px;
+        width: auto;
+        border-width: 7px;
+        border-style: outset;
+        padding-top: 8px;
+        padding-bottom: 8px;        
+}
+
+.info-table td {
+padding: 0.2em 2em;
+}
+
+</style>

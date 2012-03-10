@@ -1,0 +1,9 @@
+
+1. Deploy:
+forcefield-lm:scripts.mac_solaris sriramr$ ./kfssetup.py -f ../conf/forcefield.cfg -r tar -w ../webui -b ../build -u -s
+
+2. Run:
+forcefield-lm:scripts.mac_solaris sriramr$ ./kfslaunch.py -f ../conf/forcefield.cfg -s
+
+to stop:
+forcefield-lm:scripts.mac_solaris sriramr$ ./kfslaunch.py -f ../conf/forcefield.cfg -S

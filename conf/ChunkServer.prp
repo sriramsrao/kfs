@@ -1,0 +1,12 @@
+# Configuration for chunk server: 
+# meta server location
+chunkServer.metaServer.hostname = somehost.com
+chunkServer.metaServer.port = 30000
+# port to open for client connections
+chunkServer.clientPort = 22000
+# Directory for storing the chunks
+chunkServer.chunkDir = ./chunks
+chunkServer.logDir = ./logs
+# provide 300G of storage space
+chunkServer.totalSpace = 300000000000
+

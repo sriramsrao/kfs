@@ -1,0 +1,5 @@
+#$Id: KfsClient.prp 182 2008-10-04 00:11:28Z sriramsrao $
+#Sample properties for use with test scripts
+#
+metaServer.name = localhost
+metaServer.port = 20000
