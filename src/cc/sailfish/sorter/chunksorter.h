@@ -91,6 +91,7 @@ namespace KFS
         kfsChunkId_t mChunkId;
         int64_t mChunkVersion;
 
+        IFileSortKey_t *mKeys;
         std::vector<IFileRecord_t> mRecords;
         // how much data is in the buffer---sans the 16K header
         int  mChunkDataLen;
@@ -113,6 +114,7 @@ namespace KFS
 #else
         lzo_voidp mWrkMem;
 #endif
+
         // when operating in file mode...read from file and write to file
         int readFromChunk(const std::string &inputFn);
         void parseChunk();
@@ -121,6 +123,7 @@ namespace KFS
         // write out a sorted chunk
         int writeToChunk(const std::string &outputFn, std::vector<IFileRecord_t> &records,
             int &indexLen);
+        int writeToChunk(const std::string &outputFn, int &indexLen);
         int compressRecords(const unsigned char *ubufStart, int ulen,
             unsigned char **compressedBuf);
     };

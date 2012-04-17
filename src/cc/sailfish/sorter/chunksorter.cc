@@ -282,7 +282,8 @@ SortWorkerManager::mainLoop(int chunkserverPort)
 
 SortWorker::SortWorker(kfsFileId_t f, kfsChunkId_t c, int64_t v) :
     mFileId(f), mChunkId(c), mChunkVersion(v),
-    mChunkDataLen(0),
+    mKeys(0),
+    mChunkDataLen(0), 
     mUncompBuffer(0), mUncompBufferSz(0)
 {
     const long kPageSz = sysconf(_SC_PAGESIZE);
@@ -317,6 +318,7 @@ SortWorker::~SortWorker()
 #endif
     free(mUncompBuffer);
     mRecords.clear();
+    delete [] mKeys;
 }
 
 void
@@ -359,7 +361,10 @@ SortWorker::sortFile(SortFileOp *op)
     sort(mRecords.begin(), mRecords.end());
     KFS_LOG_STREAM_INFO << "Done with sort" << KFS_LOG_EOM;
 
+    /*
     op->status = writeToChunk(op->outputFn, mRecords, op->indexSize);
+    */
+    op->status = writeToChunk(op->outputFn, op->indexSize);
 }
 
 void
@@ -369,7 +374,6 @@ SortWorker::flush(SorterFlushOp *op)
         << " # of records = " << mRecords.size() << KFS_LOG_EOM;
     sort(mRecords.begin(), mRecords.end());
     KFS_LOG_STREAM_INFO << "Done with sort" << KFS_LOG_EOM;
-
     op->status = writeToChunk(op->outputFn, mRecords, op->indexSize);
 }
 
@@ -423,6 +427,7 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
 {
     int fd;
 
+    // XXX: Need an O_DIRECT here as well...
     fd = open(outputFn.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
     if (fd < 0) {
         KFS_LOG_STREAM_INFO << "Unable to open: " << outputFn
@@ -430,8 +435,6 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
         return -1;
     }
 
-#if 0
-// XXX: fallocate code path needs more testing
 #ifdef KFS_USE_FALLOCATE
     int fallocStatus = posix_fallocate(fd, 0, KFS_CHUNK_HEADER_SIZE + KFS::CHUNKSIZE);
     if (fallocStatus < 0) {
@@ -439,7 +442,6 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
             << " fallocate failed with error: " << fallocStatus
             << KFS_LOG_EOM;
     }
-#endif
 #endif
     lseek(fd, KFS_CHUNK_HEADER_SIZE, SEEK_SET);
 
@@ -512,7 +514,6 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
     chunkDataP = mChunkData;
     write(fd, mChunkData, totalDataLen);
 
-#if 0
 #ifdef KFS_USE_FALLOCATE
     if (fallocStatus == 0) {
         // release any of the unused reserved space
@@ -521,8 +522,170 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
         ftruncate(fd, currPos);
     }
 #endif
+    
+    // get the index written out
+    lseek(fd, KFS_CHUNK_HEADER_SIZE + KFS::CHUNKSIZE, SEEK_SET);
+    // stick an 4-byte entry that says how many entries are in the index
+    write(fd, &indexEntryCount, sizeof(int));
+    indexLen += sizeof(int);
+
+    assert(indexLen < (int) INDEX_BUFFER_SIZE);
+
+    write(fd, mIndexBuffer, indexLen);
+
+    mDci->chunkSize = totalDataLen;
+    mDci->chunkIndexSize = indexLen;
+
+    if (totalDataLen % KFS::CHECKSUM_BLOCKSIZE) {
+        int padding = KFS::CHECKSUM_BLOCKSIZE - (totalDataLen % KFS::CHECKSUM_BLOCKSIZE);
+
+        assert(totalDataLen + padding <= (int) KFS::CHUNKSIZE);
+
+        memset(chunkDataP + totalDataLen, 0, padding);
+        totalDataLen += padding;
+
+    }
+    // now compute the checksums on the data
+    for (uint32_t i = 0; i < OffsetToChecksumBlockNum(totalDataLen); i++) {
+        mDci->chunkBlockChecksum[i] = ComputeBlockChecksum((const char *) chunkDataP, 
+            KFS::CHECKSUM_BLOCKSIZE);
+        chunkDataP += KFS::CHECKSUM_BLOCKSIZE;
+    }
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, mDci, sizeof(DiskChunkInfo_t));
+
+    
+    close(fd);
+
+    KFS_LOG_STREAM_INFO << "Done with writing to output file: " << outputFn 
+        << " filesz: " << mDci->chunkSize << " indexSz: " << indexLen << KFS_LOG_EOM;    
+    return 0;
+}
+
+int
+SortWorker::writeToChunk(const string &outputFn, int &indexLen)
+{
+    int fd;
+
+    // XXX: Need an O_DIRECT here as well...
+    fd = open(outputFn.c_str(), O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR);
+    if (fd < 0) {
+        KFS_LOG_STREAM_INFO << "Unable to open: " << outputFn
+            << " bailing..." << KFS_LOG_EOM;
+        return -1;
+    }
+
+#ifdef KFS_USE_FALLOCATE
+    int fallocStatus = posix_fallocate(fd, 0, KFS_CHUNK_HEADER_SIZE + KFS::CHUNKSIZE);
+    if (fallocStatus < 0) {
+        KFS_LOG_STREAM_INFO << "For file: " << outputFn 
+            << " fallocate failed with error: " << fallocStatus
+            << KFS_LOG_EOM;
+    }
 #endif
 
+    lseek(fd, KFS_CHUNK_HEADER_SIZE, SEEK_SET);
+
+    indexLen = 0;
+
+    // 256K
+    const int kCompressBlobLen = 1 << 18;
+    int uncompressedBufsz = 1 << 20;
+    boost::scoped_array<unsigned char> uncompressedBuffer;
+    uncompressedBuffer.reset(new unsigned char[uncompressedBufsz]);
+
+    unsigned char *chunkDataP = uncompressedBuffer.get();
+    unsigned char *compressedBufP = mChunkData;
+    char *indexBufferP = mIndexBuffer;
+    int totalDataLen = 0;
+    int recordStartPos = 0;
+    int recLen, indexEntryLen;
+    int recordNumber = 0;
+    int indexEntryCount = 0, lastEntryPos = 0;
+    int nextIndexEntryPos = 0;
+    // get the data written out
+    for (uint32_t i = 0; i < mRecords.size(); i++) {
+        // each index entry corresponds to an LZO-compression block
+        // also, write one for the first record
+        // and one for the last record.
+        // XXX: Would be nice if we just sorted the keys than records.
+        // This might help with cache locality.
+        // IFileRecord_t &record = mRecords[mKeys[i].recordIndex];
+        IFileRecord_t &record = mRecords[i];
+
+        recLen = record.serializedLen();
+
+        if ((i == 0) || (i == mRecords.size() - 1) ||
+            ((recordStartPos - lastEntryPos) + recLen >= 
+                kCompressBlobLen)) {
+
+            if (i != 0) {
+                // i == 0 means the first record; there is nothing in
+                // the buffer.  when i != 0, there is stuff in the
+                // buffer, and we need to compress it.
+                compressRecords(uncompressedBuffer.get(), totalDataLen,
+                    &compressedBufP);
+
+                // stash the offset in the chunk where the record that
+                // corresponds to the start of the next compressed blob is
+                // going to be.
+                nextIndexEntryPos = compressedBufP - mChunkData;
+
+                // reset
+                chunkDataP = uncompressedBuffer.get();
+                totalDataLen = 0;
+            }
+
+            // beginning of a new compression block...so, record the
+            // index entry that corresponds to the first record in the block.
+            indexEntryLen = record.serializeIndexEntry(indexBufferP, nextIndexEntryPos,
+                recordNumber);
+            indexEntryCount++;
+            indexLen += indexEntryLen;
+            indexBufferP += indexEntryLen;
+            lastEntryPos = recordStartPos;
+            
+            assert(indexLen < (int) INDEX_BUFFER_SIZE);
+        }
+        if (recLen + totalDataLen >= uncompressedBufsz) {
+            // allocate a bigger buffer if needed...we should never
+            // have to do a realloc...otherwise, there is a bug in the
+            // above code that checks when we can compress
+            assert(totalDataLen == 0);
+            uncompressedBufsz = recLen + 4096;
+            uncompressedBuffer.reset(new unsigned char[uncompressedBufsz]);
+            chunkDataP = uncompressedBuffer.get();
+        }
+        recLen = record.serialize((char *) chunkDataP);
+        totalDataLen += recLen;
+        chunkDataP += recLen;
+
+        recordStartPos += recLen;
+        recordNumber++;
+    }
+    // compress whatever is left: will have one record, which is the
+    // last record.  the index entry for that record got written out
+    // in the above loop.
+    compressRecords(uncompressedBuffer.get(), totalDataLen,
+        &compressedBufP);
+
+    totalDataLen = compressedBufP - mChunkData;
+
+    assert(totalDataLen < KFS::CHUNKSIZE);
+
+    chunkDataP = mChunkData;
+    write(fd, mChunkData, totalDataLen);
+
+#ifdef KFS_USE_FALLOCATE
+    if (fallocStatus == 0) {
+        // release any of the unused reserved space
+        off_t currPos = lseek(fd, 0, SEEK_CUR);
+
+        ftruncate(fd, currPos);
+    }
+#endif
+    
     // get the index written out
     lseek(fd, KFS_CHUNK_HEADER_SIZE + KFS::CHUNKSIZE, SEEK_SET);
     // stick an 4-byte entry that says how many entries are in the index
@@ -676,15 +839,11 @@ SortWorker::readFromChunk(const string &inputFn)
             << " bailing..." << KFS_LOG_EOM;
         return res;
     }
-#if 0
-    // enable O_DIRECT code path after more testing
     fd = open(inputFn.c_str(), O_RDONLY
 #ifdef O_DIRECT
         |O_DIRECT
 #endif
         );
-#endif
-    fd = open(inputFn.c_str(), O_RDONLY);
     if (fd < 0) {
         KFS_LOG_STREAM_INFO << "Unable to open: " << inputFn
             << " bailing..." << KFS_LOG_EOM;
