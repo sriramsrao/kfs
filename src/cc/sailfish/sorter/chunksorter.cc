@@ -509,7 +509,7 @@ SortWorker::writeToChunk(const string &outputFn, vector<IFileRecord_t> &records,
 
     totalDataLen = compressedBufP - mChunkData;
 
-    assert(totalDataLen < KFS::CHUNKSIZE);
+    assert(totalDataLen < (int) KFS::CHUNKSIZE);
 
     chunkDataP = mChunkData;
     write(fd, mChunkData, totalDataLen);
@@ -672,7 +672,7 @@ SortWorker::writeToChunk(const string &outputFn, int &indexLen)
 
     totalDataLen = compressedBufP - mChunkData;
 
-    assert(totalDataLen < KFS::CHUNKSIZE);
+    assert(totalDataLen < (int) KFS::CHUNKSIZE);
 
     chunkDataP = mChunkData;
     write(fd, mChunkData, totalDataLen);

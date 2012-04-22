@@ -176,7 +176,7 @@ doRead(const string &filename, int numMBytes,
 
     while (nread < ((off_t) numMBytes) * ((off_t) mByte)) {
         res = gKfsClient->Read(fd, dataBuf.get(), readSizeBytes);
-        if (res != readSizeBytes)
+        if (res != (int) readSizeBytes)
             return (bytesRead + nMBytes * 1024 * 1024);
         nread += readSizeBytes;
         if (doSleep) {

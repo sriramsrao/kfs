@@ -213,6 +213,8 @@ Appender::CompressRecords()
 #else
         size_t alignment = sizeof(lzo_voidp);
 #endif
+        (void) alignment;
+
         mUncompBuffer = new char[mUncompBufferSize];
         /*
         MemAlignedMalloc(&mUncompBuffer, alignment,
