@@ -141,6 +141,10 @@ def setupChunkConfig(section, config, outputFn):
     print >> fh, "chunkServer.clusterKey = %s" % config.get('metaserver', 'clusterkey')
     print >> fh, "chunkServer.rackId = %d" % (rackId)
     print >> fh, "chunkServer.md5sum = %s" % (md5String)
+    if config.has_option(section, 'sorterport'):
+        print >> fh, "chunkServer.sorter.port = %s" % config.get(section, 'sorterport')
+    if config.has_option(section, 'loglevel'):
+        print >> fh, "chunkServer.loglevel = %s" % config.get(section, 'loglevel')
 
     space = config.get(section, 'space')
     s = space.split()
@@ -171,7 +175,7 @@ def setupChunk(section, config, outputFn, packageFn):
     """ Setup the chunkserver binaries/config files on a node. """
     setupChunkConfig(section, config, outputFn)
 
-    cmd = "%s -zcf %s bin/chunkscrubber bin/chunkserver %s lib scripts/*" % (tarProg, packageFn, outputFn)
+    cmd = "%s -zcf %s bin/chunkscrubber bin/chunkserver bin/sailfish/* %s lib scripts/*" % (tarProg, packageFn, outputFn)
     os.system(cmd)
 
     rundir = config.get(section, 'rundir')
