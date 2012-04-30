@@ -60,6 +60,11 @@ startServer()
 	then
 	RETVAL=$?
 	echo
+        # Run one per drive
+        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.1.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.2.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.3.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.4.log > /dev/null 2>&1 &
 	return $RETVAL
     fi
 
@@ -142,6 +147,7 @@ done
 
 [ -f bin/$server ] || exit 0
 LOGS_DIR="logs"
+SORTER_LOG_DIR=$LOGS_DIR
 SERVER_LOG_FILE=$LOGS_DIR/$server.log
 SERVER_PID_FILE=$LOGS_DIR/$server.pid
 
