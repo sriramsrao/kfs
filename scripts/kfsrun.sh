@@ -61,10 +61,10 @@ startServer()
 	RETVAL=$?
 	echo
         # Run one per drive
-        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.1.log > /dev/null 2>&1 &
-        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.2.log > /dev/null 2>&1 &
-        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.3.log > /dev/null 2>&1 &
-        bin/sailfish/chunksorter -l $SORTER_LOG_DIR/cs.4.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -C $sorterport -l $SORTER_LOG_DIR/cs.1.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -C $sorterport -l $SORTER_LOG_DIR/cs.2.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -C $sorterport -l $SORTER_LOG_DIR/cs.3.log > /dev/null 2>&1 &
+        bin/sailfish/chunksorter -C $sorterport -l $SORTER_LOG_DIR/cs.4.log > /dev/null 2>&1 &
 	return $RETVAL
     fi
 
@@ -122,12 +122,13 @@ stopServer()
 }
 
 # Process any command line arguments
-TEMP=`getopt -o f:b:p:sSmch -l file:,backup_node:,backup_path:,start,stop,meta,chunk,help \
+TEMP=`getopt -o f:b:p:r:sSmch -l file:,backup_node:,backup_path:,sorterport:,start,stop,meta,chunk,help \
 	-n kfsrun.sh -- "$@"`
 eval set -- "$TEMP"
 
 backup_node=
 backup_path=
+sorterport=21000
 
 while true
 do
@@ -139,6 +140,7 @@ do
 	-f|--file) config=$2; shift;;
 	-b|--backup_node) backup_node=$2; shift;;
 	-p|--backup_path) backup_path=$2; shift;;
+	-r|--sorterport) sorterport=$2; shift;;
 	-h|--help) echo "usage: $0 [--start | --stop] [--meta | --chunk] [--file <config>]"; exit;;
 	--) break ;;
 	esac
