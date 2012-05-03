@@ -119,8 +119,8 @@ if __name__ == '__main__':
                 runargs = runargs + " -p %s" % (bkup_path)
         else:
             runargs = "-c -f bin/ChunkServer.prp"
-	    if config.has_option(section, 'sorterport'):
-	    	runargs = runargs + " -r %s" % config.get(section, 'sorterport')
+	    if config.has_option(s, 'sorterport'):
+	    	runargs = runargs + " -r %s" % config.get(s, 'sorterport')
             
         cmd = "ssh -o StrictHostKeyChecking=no %s 'cd %s; scripts/kfsrun.sh %s %s ' " % \
               (node, rundir, op, runargs)
